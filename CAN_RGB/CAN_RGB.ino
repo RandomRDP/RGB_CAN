@@ -28,44 +28,61 @@ void setup() {
 
 
   FastLED.addLeds<WS2811, DATA_PIN, GRB>(leds, NUM_LEDS);
+
+  // need to make sure not Interrupting each other
+  attachInterrupt(digitalPinToInterrupt(2), HS_CAN_MSG,FALLING);
+  //attachInterrupt(digitalPinToInterrupt(3), MS_CAN_MSG,FALLING);
 }
 
 void loop() {
-  if (HS_CAN.readMessage(&canMsg) == MCP2515::ERROR_OK){ // To receive data (Poll Read)
-    printMsg(canMsg);   
-    if (canMsg.can_id == 1689){
-      switch (canMsg.data[0]){
-        case 0x02:
-          break;
-        case 0x03:
-          break; 
-        case 0x04:
-          break; 
-        case 0x05:
-          break; 
-      }
-    }
-  }
-  
-  if (MS_CAN.readMessage(&canMsg) == MCP2515::ERROR_OK){ // To receive data (Poll Read)    
+  for (int i = 0; i < NUM_LEDS; i++){
     
+  }
+  FastLED.show();
+}
+
+void HS_CAN_MSG(){
+  if (HS_CAN.readMessage(&canMsg) == MCP2515::ERROR_OK){ // To receive data (Poll Read)
+      printMsg(&canMsg);
+      switch (canMsg.can_id){
+        case 1689:
+          decode_CAN_CTRL(&canMsg);
+          break;
+        default:
+          break;
+      }   
   }
 }
 
+void MS_CAN_MSG(){
+  if (MS_CAN.readMessage(&canMsg) == MCP2515::ERROR_OK){ // To receive data (Poll Read)
+      printMsg(&canMsg);   
+    }  
+}
 
-for (int i = 0; i < NUM_LEDS; i++){
-          leds[i] = CRGB(canMsg.data[1],canMsg.data[2],canMsg.data[3]);
-        }
-        FastLED.show();
+void decode_CAN_CTRL(struct can_frame *frame){
+  switch (frame->data[0]){
+    case 0x02:  // Static
+      break;
+    case 0x03:  // Breath
+      break; 
+    case 0x04:  // Rainbow
+      break; 
+    case 0x05:  // Wave
+      break; 
+    default:
+      break;
+  }
+}
 
 void printMsg(struct can_frame *frame){
   Serial.print("<");
-  Serial.print(frame.can_id);
+  Serial.print(frame->can_id);
   Serial.print(";");
-  for(int i=0;i<frame.can_dlc-1;i++) {  
-    Serial.print(frame.data[i]);
+  for(int i=0;i<frame->can_dlc-1;i++) {  
+    Serial.print(frame->data[i]);
     Serial.print(",");
   }                 
-  Serial.print(frame.data[frame.can_dlc-1]);             
+  Serial.print(frame->data[frame->can_dlc-1]);             
   Serial.println(">");
 }
